@@ -101,6 +101,13 @@ async function run() {
       res.send(result);
     });
 
+    // api for get all rooms
+    app.get("/rooms", async (req, res) => {
+      const cursor = roomsCollection.find();
+      const rooms = await cursor.toArray();
+      res.send(rooms);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
