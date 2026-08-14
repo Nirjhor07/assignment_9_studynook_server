@@ -38,12 +38,28 @@ async function run() {
     // collections for api
     const roomsCollection = db.collection("rooms");
 
-
     //post api for rooms
     app.post("/rooms", async (req, res) => {
       const room = req.body;
       const result = await roomsCollection.insertOne(room);
       res.send(result);
+    });
+
+    // get user created rooms by id
+    // Get all rooms created by a specific owner
+    app.get("/my/rooms", async (req, res) => {
+      const query = {};
+
+      // Check if the frontend sent the userId in the query string
+      if (req.query.userId) {
+        // Query by the field name you used when creating the room
+        query.roomOwnerId = req.query.userId;
+      }
+
+      // Use find().toArray() to get ALL matching rooms
+      const rooms = await roomsCollection.find(query).toArray();
+
+      res.send(rooms);
     });
 
     // Send a ping to confirm a successful connection
