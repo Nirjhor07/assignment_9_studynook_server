@@ -18,6 +18,7 @@ app.get("/", (req, res) => {
 });
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -28,6 +29,38 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+//jwt key set
+const JWKS = createRemoteJWKSet(new URL(process.env.JWTKS_URL));
+
+// Middleware to verify JWT token
+const verifyJwt = async (req, res, next) => {
+  const authHeader = req?.headers.authorization;
+  // console.log("JWT token", authHeader);//get the token from the authorization header
+  // const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  // console.log("Required token", requiredToken);
+  console.log(token);
+  // next(); // Proceed to the next middleware or route handler without verification
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    req.user = payload; // Attach payload to request object
+    // console.log("JWT payload:", payload); // Log the payload for debugging
+    req.userId = payload.id; // Assuming the payload contains an 'id' field for the user
+    console.log("User ID from JWT:", req.userId); // Log the user ID for debugging
+    return next(); // Safe continuation after successful verification
+  } catch (error) {
+    // console.error("JWT verification error:", error.message);
+    return res.status(403).json({ message: "forbidden access" });
+  }
+};
 
 async function run() {
   try {
@@ -41,7 +74,7 @@ async function run() {
     const bookedRoomsCollection = db.collection("bookedRooms");
 
     //post api for rooms
-    app.post("/rooms", async (req, res) => {
+    app.post("/rooms", verifyJwt, async (req, res) => {
       const room = req.body;
       const newRoom = {
         ...room,
@@ -53,14 +86,17 @@ async function run() {
 
     // get user created rooms by id
     // Get all rooms created by a specific owner
-    app.get("/my/rooms", async (req, res) => {
+    app.get("/my/rooms", verifyJwt, async (req, res) => {
+      const userId = req.userId; // Get the user ID from the verified JWT
+      // console.log("User ID from JWT:", userId); // Log the user ID for debugging
       const query = {};
 
       // Check if the frontend sent the userId in the query string
       if (req.query.userId) {
         // Query by the field name you used when creating the room
-        query.roomOwnerId = req.query.userId;
+        query.roomOwnerId = userId;
       }
+      console.log("Query for my rooms:", query); // Log the query for debugging
 
       // Use find().toArray() to get ALL matching rooms
       const rooms = await roomsCollection.find(query).toArray();
@@ -87,17 +123,19 @@ async function run() {
     });
 
     //get my bookings by user id
-    app.get("/my/bookings", async (req, res) => {
+    app.get("/my/bookings", verifyJwt, async (req, res) => {
+      const userId = req.userId; // Get the user ID from the verified JWT
       const query = {};
       if (req.query.userId) {
-        query.bookingUserId = req.query.userId;
+        query.bookingUserId = userId;
       }
       const bookings = await bookedRoomsCollection.find(query).toArray();
       res.send(bookings);
     });
 
     // api for status update when cancel booking
-    app.patch("/booked/rooms/:id", async (req, res) => {
+    app.patch("/booked/rooms/:id",verifyJwt, async (req, res) => {
+      const userId = req.userId; // Get the user ID from the verified JWT
       const bookingId = req.params.id;
       const newStatus = req.body.status; // This will be "canceled"
 
@@ -128,7 +166,7 @@ async function run() {
     });
 
     // put api for update room details
-    app.put("/rooms/:id", async (req, res) => {
+    app.put("/rooms/:id", verifyJwt, async (req, res) => {
       const roomId = req.params.id;
       const updatedRoom = req.body;
 
@@ -141,7 +179,7 @@ async function run() {
     });
 
     //api to deleted room by room id
-    app.delete("/rooms/:id", async (req, res) => {
+    app.delete("/rooms/:id", verifyJwt, async (req, res) => {
       const roomId = req.params.id;
       // console.log("Deleting room with ID:", roomId);
       const result = await roomsCollection.deleteOne({
