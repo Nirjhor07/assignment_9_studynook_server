@@ -43,7 +43,11 @@ async function run() {
     //post api for rooms
     app.post("/rooms", async (req, res) => {
       const room = req.body;
-      const result = await roomsCollection.insertOne(room);
+      const newRoom = {
+        ...room,
+        createdAt: new Date(),
+      };
+      const result = await roomsCollection.insertOne(newRoom);
       res.send(result);
     });
 
@@ -74,7 +78,11 @@ async function run() {
     //post api for booked rooms
     app.post("/booked/rooms", async (req, res) => {
       const bookedRoom = req.body;
-      const result = await bookedRoomsCollection.insertOne(bookedRoom);
+      const newBookedRoom = {
+        ...bookedRoom,
+        createdAt: new Date(),
+      };
+      const result = await bookedRoomsCollection.insertOne(newBookedRoom);
       res.send(result);
     });
 
@@ -105,6 +113,17 @@ async function run() {
     app.get("/rooms", async (req, res) => {
       const cursor = roomsCollection.find();
       const rooms = await cursor.toArray();
+      res.send(rooms);
+    });
+
+    // api for get 6 rooms for home page & latest rooms
+    app.get("/rooms/latest", async (req, res) => {
+      const rooms = await roomsCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .toArray();
+
       res.send(rooms);
     });
 
