@@ -31,7 +31,9 @@ const client = new MongoClient(uri, {
 });
 
 //jwt key set
-const JWKS = createRemoteJWKSet(new URL(process.env.JWTKS_URL));
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.JWTKS_URL}/api/auth/jwks`),
+);
 
 // Middleware to verify JWT token
 const verifyJwt = async (req, res, next) => {
@@ -134,7 +136,7 @@ async function run() {
     });
 
     // api for status update when cancel booking
-    app.patch("/booked/rooms/:id",verifyJwt, async (req, res) => {
+    app.patch("/booked/rooms/:id", verifyJwt, async (req, res) => {
       const userId = req.userId; // Get the user ID from the verified JWT
       const bookingId = req.params.id;
       const newStatus = req.body.status; // This will be "canceled"
