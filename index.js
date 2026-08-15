@@ -108,6 +108,30 @@ async function run() {
       res.send(rooms);
     });
 
+    // put api for update room details
+    app.put("/rooms/:id", async (req, res) => {
+      const roomId = req.params.id;
+      const updatedRoom = req.body;
+
+      const result = await roomsCollection.updateOne(
+        { _id: new ObjectId(roomId) },
+        { $set: updatedRoom },
+      );
+
+      res.send(result);
+    });
+
+    //api to deleted room by room id
+    app.delete("/rooms/:id", async (req, res) => {
+      const roomId = req.params.id;
+      // console.log("Deleting room with ID:", roomId);
+      const result = await roomsCollection.deleteOne({
+        _id: new ObjectId(roomId),
+      });
+      // console.log("Delete result:", result);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
